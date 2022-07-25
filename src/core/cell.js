@@ -1,4 +1,4 @@
-import { Parser } from 'hot-formula-parser';
+import { Parser, SUPPORTED_FORMULAS } from 'hot-formula-parser';
 
 import helper from './helper';
 
@@ -13,6 +13,59 @@ let resetDependencies = false;
 const isFormula = (src) => {
   return src && src.length > 0 && src[0] === '=';
 }
+
+const lookupIndexByExact = (lookup_column, lookup_value) => lookup_column.indexOf(lookup_value);
+const lookupIndexByRange = (lookup_column, lookup_value) => {
+  if (lookup_value < lookup_column[0]) return -1;
+
+  for (let i=0; i<lookup_column.length; i++) {
+    if (lookup_value === lookup_column[i]) return i;
+    if (lookup_value < lookup_column[i]) return i - 1;
+  }
+
+  return lookup_column.length - 1;
+}
+formulaParser.setFunction("VLOOKUP", function(params) {
+  if (params.length !== 3 && params.length !== 4) return "#VALUE!PARAMS";
+
+  const lookup_value = params[0], table_array = params[1], col_index_num = params[2], range_lookup = params[3] === 1 || params[3] === true;
+
+  // lookup_value must be a string or a number
+  if (lookup_value.constructor !== Number && lookup_value.constructor !== String) return "#VALUE!LOOKUP_VALUE";
+
+  // lookup_range must be a non-empty array-of-arrays
+  if (table_array.constructor !== Array || table_array.length === 0 || table_array[0].constructor !== Array) {
+    return "#VALUE!LOOKUP_RANGE";
+  }
+
+  // col_index_num must be an integer matching a column in table_array
+  // note: col_index_num is 1-indexed
+  if (col_index_num.constructor !== Number) {
+    return "#VALUE!COL_NOT_A_NUM";
+  }
+  else if (col_index_num.toString().search(/^\d+$/) === -1) {
+    return "#VALUE!COL_NOT_A_INT";
+  }
+  else if (col_index_num < 0 || col_index_num > table_array[0].length) {
+    return "#REF!";
+  }
+
+  // lookup column
+  const lookup_column = table_array.map(r => r[0]);
+
+  // find row
+  // note: row_index_num is 0-indexed
+  //try{
+  const row_index_num = range_lookup ? lookupIndexByRange(lookup_column, lookup_value) : lookupIndexByExact(lookup_column, lookup_value);//}catch(e){console.log(e)}
+  if (row_index_num === -1) {
+    return "#N/A";
+  }
+
+  return table_array[row_index_num][col_index_num - 1];
+});
+SUPPORTED_FORMULAS.push("VLOOKUP");
+
+SUPPORTED_FORMULAS.sort();
 
 // Whenever formulaParser.parser encounters a cell reference, it will
 // execute this callback to query the true value of that cell reference.
