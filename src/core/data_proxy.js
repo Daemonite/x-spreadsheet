@@ -418,7 +418,8 @@ export default class DataProxy {
             copyText += '\t'
           }
           if (rowData[ri].cells.hasOwnProperty(ci)) {
-            var cellText = String(rowData[ri].cells[ci].getText())
+            //var cellText = String(rowData[ri].cells[ci].getText())
+            var cellText = String(this.rows.getCell(ri, ci).getText())
             if ((cellText.indexOf("\n") == -1) && (cellText.indexOf("\t") == -1) && (cellText.indexOf("\"") == -1)) {
               copyText += cellText;
             } else {
